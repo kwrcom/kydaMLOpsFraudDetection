@@ -205,17 +205,18 @@ services:
       MLFLOW_TRACKING_URI: http://mlflow:5000
       BATCH_SIZE: 10
 
-  dashboard:
-    build: ../dashboard
-    container_name: dashboard
+  frontend:
+    build: ../frontend
+    container_name: frontend
     ports:
-      - "8000:80"
+      - "3000:3000"
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_DB: mlflow
       POSTGRES_USER: mlflow
       POSTGRES_PASSWORD: mlflow
       REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       - postgres
       - redis
@@ -228,7 +229,7 @@ services:
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - dashboard
+      - frontend
 
 volumes:
   postgres-db-volume:
