@@ -1,0 +1,9 @@
+kafka-python
+pandas
+numpy
+mlflow
+lightgbm
+xgboost
+catboost
+boto3
+redis
