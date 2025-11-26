@@ -10,21 +10,22 @@ import React, { Component, ReactNode } from 'react';
  * This improves user experience by showing a graceful error message and allowing
  * the rest of the UI to remain functional.
  */
-export default class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorInfo: string }> {
+export default class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorInfo: string | null }> {
     constructor(props: any) {
         super(props);
-        this.state = { hasError: false, errorInfo: '' };
+        this.state = { hasError: false, errorInfo: null };
     }
 
     static getDerivedStateFromError(_: Error) {
         // Update state so the next render shows the fallback UI.
-        return { hasError: true, errorInfo: '' };
+        return { hasError: true, errorInfo: null };
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
         // Log error details for debugging.
         console.error('ErrorBoundary caught an error', error, errorInfo);
-        this.setState({ errorInfo: errorInfo.componentStack });
+        // componentStack may be null/undefined — store as string or null to satisfy strict types
+        this.setState({ errorInfo: errorInfo.componentStack ?? null });
     }
 
     render() {
