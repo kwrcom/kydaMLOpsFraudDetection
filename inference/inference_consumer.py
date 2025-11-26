@@ -65,6 +65,9 @@ def connect_redis_with_retry(max_retries=5, initial_delay=1):
 # Why: Initialize Redis connection at startup with retry logic
 redis_client = connect_redis_with_retry()
 
+MODEL_INFO = {"name": "FraudDetectionModel", "version": None}
+
+
 def load_model():
     """
     Why: Load the production fraud detection model from MLflow Model Registry
@@ -77,6 +80,17 @@ def load_model():
         # This provides a consistent interface regardless of which model performed best
         model = mlflow.pyfunc.load_model(model_uri)
         logger.info("Loaded Production model from MLflow")
+        # Try to resolve version from Registry if available
+        try:
+            from mlflow.tracking import MlflowClient
+            client = MlflowClient()
+            vers = client.get_latest_versions(model_name="FraudDetectionModel", stages=["Production"])
+            if vers and len(vers) > 0:
+                MODEL_INFO["version"] = vers[0].version
+        except Exception:
+            # best-effort only
+            MODEL_INFO["version"] = None
+        logger.info(f"Model info: {MODEL_INFO}")
         return model
     except Exception as e:
         logger.error(f"Failed to load model from MLflow: {e}")
@@ -188,7 +202,12 @@ def main():
                     txn['pred_label'] = int(pred_label)
                     
                     # Why: Publish prediction to Kafka for downstream consumers
-                    # Other systems can subscribe to this topic for alerting, blocking, etc.
+                    # Attach model metadata (name/version) so downstream can do A/B analysis
+                    try:
+                        txn['model_name'] = MODEL_INFO.get('name')
+                        txn['model_version'] = MODEL_INFO.get('version')
+                    except Exception:
+                        pass
                     producer.send(OUTPUT_TOPIC, value=txn)
                     
                     # Why: Store prediction in Redis for real-time dashboard display
