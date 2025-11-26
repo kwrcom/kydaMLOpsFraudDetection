@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir \
     xgboost \
     catboost \
     imbalanced-learn \
+    mlflow \
     s3fs \
     minio \
     kafka-python
