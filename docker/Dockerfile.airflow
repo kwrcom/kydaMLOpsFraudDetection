@@ -1,0 +1,16 @@
+FROM apache/airflow:2.7.1
+
+USER root
+RUN apt-get update && apt-get install -y gcc python3-dev && apt-get clean
+
+USER airflow
+RUN pip install --no-cache-dir \
+    pandas \
+    scikit-learn \
+    lightgbm \
+    xgboost \
+    catboost \
+    imbalanced-learn \
+    s3fs \
+    minio \
+    kafka-python
