@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import Redis from 'ioredis';
 
-// Disable caching for this dynamic route
 export const dynamic = 'force-dynamic';
 
 const redis = new Redis({
@@ -11,10 +10,9 @@ const redis = new Redis({
 
 export async function GET() {
     try {
-        // Fetch last 20 predictions
         const rawList = await redis.lrange('recent_predictions', 0, 19);
 
-        const predictions = rawList.map((item) => {
+        const predictions = rawList.map((item: string) => {
             try {
                 return JSON.parse(item);
             } catch (e) {
