@@ -238,28 +238,21 @@ services:
       REDIS_PORT: 6379
       FRAUD_THRESHOLD: 0.5
 
-  # Why: Next.js dashboard for real-time fraud detection monitoring
-  # Displays model metrics and live transaction predictions
+  # Why: Frontend dashboard (Next.js)
+  # Serves the UI for monitoring fraud alerts
   frontend:
-    build: ../frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      # Why: Postgres connection for reading MLflow metrics
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: mlflow
-      POSTGRES_USER: mlflow
-      POSTGRES_PASSWORD: mlflow
-      # Why: Redis connection for reading real-time predictions
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      - NODE_ENV=production
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - inference
+      - redis
 
   # Why: Nginx reverse proxy for serving frontend on port 80
   # Enables access via domain name (kyda.tech) instead of port 3000
@@ -271,8 +264,8 @@ services:
       - "80:80"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - frontend
+    # The `frontend` container is not present in this environment. Nginx will
+    # serve a small placeholder page if the dashboard isn't available.
 
 volumes:
   postgres-db-volume:
