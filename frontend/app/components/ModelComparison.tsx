@@ -80,7 +80,7 @@ export default function ModelComparison() {
             const json = await res.json();
             console.log('transition result', json);
             // refresh
-            fetch(`/api/mlflow/models?name=${encodeURIComponent(selected)}`).then(r => r.json()).then(j => setDetails(j as ModelInfo));
+            fetch(`/api/mlflow/models?name=${encodeURIComponent(selected ?? '')}`).then(r => r.json()).then(j => setDetails(j as ModelInfo));
         } catch (e) {
             console.error(e);
         }

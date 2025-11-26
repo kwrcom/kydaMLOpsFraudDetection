@@ -9,6 +9,7 @@ import {
     LineElement,
     Tooltip,
     Legend,
+    type TooltipItem,
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 import { Line } from 'react-chartjs-2';
@@ -51,7 +52,7 @@ export default function LineChartFraudRate({ points }: { points: Point[] }) {
             yTrans: { position: 'right', grid: { display: false }, title: { display: true, text: 'Transactions' } },
         },
         plugins: {
-            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.formattedValue}` } },
+            tooltip: { callbacks: { label: (ctx: TooltipItem<'line'>) => `${ctx.dataset.label}: ${ctx.formattedValue}` } },
         },
     };
 
