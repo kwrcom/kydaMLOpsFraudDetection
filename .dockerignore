@@ -1,0 +1,67 @@
+# Why: Exclude unnecessary files from Docker builds to speed up build process and reduce image size
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in runtime containers)
+*.md
+docs/
+
+# Logs
+*.log
+logs/
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Node modules (for frontend)
+node_modules/
+.next/
+out/
+
+# Data files (should be generated or loaded from external sources)
+*.csv
+*.parquet
+*.pkl
+*.joblib
+data/
+output/
+
+# Airflow specific
+airflow.cfg
+airflow.db

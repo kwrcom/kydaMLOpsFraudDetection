@@ -1,5 +1,8 @@
-version: '3.8'
+# Why: Docker Compose file defining all services for the MLOps Fraud Detection system
+# This orchestrates Kafka, Airflow, MLflow, inference pipeline, and frontend dashboard
 
+# Why: Reusable configuration for all Airflow services (webserver, scheduler, worker)
+# This ensures consistency across all Airflow components
 x-airflow-common: &airflow-common
   build:
     context: .
@@ -29,25 +32,31 @@ x-airflow-common: &airflow-common
       condition: service_healthy
 
 services:
+  # Why: Zookeeper coordinates Kafka cluster metadata and broker management
+  # Required for Kafka to function properly
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     hostname: zookeeper
     container_name: zookeeper
+    restart: unless-stopped
     ports:
       - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
+  # Why: Kafka message broker for streaming transaction data
+  # Handles high-throughput real-time data pipeline between producer and inference consumer
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     hostname: kafka
     container_name: kafka
+    restart: unless-stopped
     depends_on:
       - zookeeper
     ports:
-      - "29092:29092"
-      - "9092:9092"
+      - "29092:29092" # Why: Internal Docker network port
+      - "9092:9092" # Why: External access port for local development
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -113,12 +122,17 @@ services:
     entrypoint: >
       /bin/sh -c " /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}; /usr/bin/mc mb myminio/mlflow; exit 0; "
 
+  # Why: MLflow tracks ML experiments, stores models, and serves them for inference
+  # Central model registry for versioning and deployment
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.7.1
     container_name: mlflow
+    restart: unless-stopped
     depends_on:
-      - postgres
-      - minio
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     ports:
       - "5000:5000"
     environment:
@@ -127,6 +141,12 @@ services:
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: >
       mlflow server --backend-store-uri postgresql://mlflow:mlflow@postgres/mlflow --default-artifact-root s3://mlflow/ --host 0.0.0.0 --port 5000
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   airflow-init:
     <<: *airflow-common
@@ -182,50 +202,71 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  # Why: Synthetic transaction generator that streams data to Kafka
+  # Simulates real-time transaction flow for testing and demonstration
   producer:
     build: ../producer
     container_name: producer
+    restart: unless-stopped
     depends_on:
       - kafka
     environment:
       KAFKA_BROKER: kafka:29092
       TRANSACTIONS_TOPIC: transactions
-      SLEEP_TIME: 0.5
+      SLEEP_TIME: 0.5 # Why: Delay between transactions (0.5s = 2 transactions/second)
 
+  # Why: Real-time fraud detection inference service
+  # Consumes transactions from Kafka, runs ML predictions, publishes results
   inference:
     build:
       context: ..
       dockerfile: inference/Dockerfile
     container_name: inference
+    restart: unless-stopped
     depends_on:
       - kafka
       - mlflow
+      - redis
     environment:
       KAFKA_BROKER: kafka:29092
       TRANSACTIONS_TOPIC: transactions
       PREDICTIONS_TOPIC: fraud_predictions
       MLFLOW_TRACKING_URI: http://mlflow:5000
       BATCH_SIZE: 10
+      # Why: Redis connection settings for storing predictions for dashboard
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      FRAUD_THRESHOLD: 0.5
 
+  # Why: Next.js dashboard for real-time fraud detection monitoring
+  # Displays model metrics and live transaction predictions
   frontend:
     build: ../frontend
     container_name: frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
+      # Why: Postgres connection for reading MLflow metrics
       POSTGRES_HOST: postgres
       POSTGRES_DB: mlflow
       POSTGRES_USER: mlflow
       POSTGRES_PASSWORD: mlflow
+      # Why: Redis connection for reading real-time predictions
       REDIS_HOST: redis
       REDIS_PORT: 6379
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
+  # Why: Nginx reverse proxy for serving frontend on port 80
+  # Enables access via domain name (kyda.tech) instead of port 3000
   nginx:
     image: nginx:latest
     container_name: nginx
+    restart: unless-stopped
     ports:
       - "80:80"
     volumes:
